@@ -1,40 +1,21 @@
-/* ===============================================================
-      Project: CH376S USB Read/Write Module testing ground
-       Author: Scott C
-      Created: 1st May 2015
-  Arduino IDE: 1.6.2
-      Website: http://arduinobasics.blogspot.com/p/arduino-basics-projects-page.html
-  Description: This project will allow you to perform many of the functions available on the CH376S module.
-               Checking connection to the module, putting the module into USB mode, resetting the module, 
-               reading, writing, appending text to files on the USB stick. This is very useful alternative to
-               SD card modules, plus it doesn't need any libraries.
-================================================================== */
-
-#include <SoftwareSerial.h>
-
 byte computerByte;           //used to store data coming from the computer
 byte USB_Byte;               //used to store data coming from the USB stick
 int LED = 13;                //the LED is connected to digital pin 13 
-int timeOut = 5000;          //TimeOut is 2 seconds. This is the amount of time you wish to wait for a response from the CH376S module.
+int timeOut = 2000;          //TimeOut is 2 seconds. This is the amount of time you wish to wait for a response from the CH376S module.
 String wrData = "What is the meaning of life ?";     //We will write this data to a newly created file.
 String wrData2 = "42";                                   //We will append this data to an already existing file.
 
-SoftwareSerial USB(19, 18);                           // Digital pin 10 on Arduino (RX) connects to TXD on the CH376S module
-                                                    // Digital pin 11 on Arduino (TX) connects to RXD on the CH376S module
-                                                    // GND on Arduino to GND on CH376S module
-                                                    // 5V on Arduino to 5V on CH376S module
 //==============================================================================================================================================
 void setup() {
   Serial.begin(9600);                                 // Setup serial communication with the computer (using a baud rate of 9600 on serial monitor)
-  Serial1.begin(9600);                                
-  USB.begin(9600);                                    // Setup serial communication with the CH376S module (using the default baud rate of 9600)
+  Serial1.begin(9600);
   pinMode(LED,OUTPUT);                                // Define digital pin 13 as an OUTPUT pin - so that we can use it with an LED
   digitalWrite(LED,LOW);                              // Turn off the LED
 }
 
 //================================================================================================================================================
 void loop() {
-  if(Serial.available() > 0){
+  if(Serial.available()){
     computerByte = Serial.read();                      //read any incoming bytes from the Serial monitor, and store this byte in the variable called computerByte
     if(computerByte==49){               //1            //If you send the number 1 from the serial monitor, the arduino will read it as digital number 49. Google "ascii table" for more info.
       printCommandHeader("COMMAND1: CHECK CONNECTION");
@@ -48,13 +29,35 @@ void loop() {
       printCommandHeader("COMMAND3: resetALL");
       resetALL();                                      // Reset the USB device
     }
-  }else{
+    if(computerByte==52){               //4
+      printCommandHeader("COMMAND4: Create and Write to File : TEST4.TXT");
+      writeFile("TEST4.TXT", wrData);                  // Create a file called TEST4.TXT and then Write the contents of wrData to this file
+    }
+    if(computerByte==53){               //5
+      printCommandHeader("COMMAND5: Read File: TEST4.TXT");
+      readFile("TEST4.TXT");                           // Read the contents of this file on the USB disk, and display contents in the Serial Monitor
+    }
+    if(computerByte==54){               //6
+      printCommandHeader("COMMAND6: Append data to file: TEST4.TXT");
+      appendFile("TEST4.TXT", wrData2);                // Append data to the end of the file.
+    }
+    if(computerByte==55){               //7
+      printCommandHeader("COMMAND7: Delete File: TEST4.TXT");
+      fileDelete("TEST4.TXT");                         // Delete the file named TEST4.TXT
+    }
+    if(computerByte==56){               //8
+      printCommandHeader("COMMAND8: Read File: TEST2.TXT");
+      readFile("TEST2.TXT");                           // Read the contents of the TEST2.TXT file on the USB disk, and display contents in the Serial Monitor
+    }
+    if(computerByte==57){               //9
+      printCommandHeader("COMMAND9: Read File: TEST3.TXT");
+      readFile("TEST3.TXT");                           // Read the contents of the TEST3.TXT file on the USB disk, and display contents in the Serial Monitor
+    }
   }
   
-  if(USB.available()){                                 // This is here to capture any unexpected data transmitted by the CH376S module
+  if(Serial1.available()){                                 // This is here to capture any unexpected data transmitted by the CH376S module
     Serial.print("CH376S has just sent this code:");
-    Serial.println(USB.read(), HEX);
-  }else{
+    Serial.println(Serial1.read(), HEX);
   }
 }
 
@@ -63,24 +66,21 @@ void loop() {
 //print Command header
 void printCommandHeader(String header){
    Serial.println("======================");
+   Serial.println("");
    Serial.println(header);
    Serial.println("----------------------");
-   Serial.println("");
-
-   Serial1.println("======================");
-   Serial1.println(header);
-   Serial1.println("----------------------");
-   Serial1.println("");
 }
 
 //checkConnection==================================================================================
 //This function is used to check for successful communication with the CH376S module. This is not dependant of the presence of a USB stick.
 //Send any value between 0 to 255, and the CH376S module will return a number = 255 - value. 
 void checkConnection(byte value){
-  USB.write(0x57);
-  USB.write(0xAB);
-  USB.write(0x06);
-  USB.write(value);
+  Serial.println(value);
+  value = value + 14;
+  Serial1.write(0x57);
+  Serial1.write(0xAB);
+  Serial1.write(0x06);
+  Serial1.write(value);
   
   if(waitForResponse("checking connection")){       //wait for a response from the CH376S. If CH376S responds, it will be true. If it times out, it will be false.
     if(getResponseFromUSB()==(255-value)){
@@ -95,19 +95,24 @@ void checkConnection(byte value){
 //set_USB_Mode=====================================================================================
 //Make sure that the USB is inserted when using 0x06 as the value in this specific code sequence
 void set_USB_Mode (byte value){
-  USB.write(0x57);
-  USB.write(0xAB);
-  USB.write(0x15);
-  USB.write(value);
+  Serial1.write(0x57);
+  Serial1.write(0xAB);
+  Serial1.write(0x15);
+  Serial1.write(value);
   
   delay(20);
   
-  if(USB.available()){
-    USB_Byte=USB.read();
+  if(Serial1.available()){
+    USB_Byte=Serial1.read();
+    
+  Serial.println("USB_Byte");
+  Serial.println(USB_Byte);
+  Serial.println("USB_Byte");
+    
     //Check to see if the command has been successfully transmitted and acknowledged.
     if(USB_Byte==0x51){                                   // If true - the CH376S has acknowledged the command.
         Serial.println("set_USB_Mode command acknowledged"); //The CH376S will now check and monitor the USB port
-        USB_Byte = USB.read();
+        USB_Byte = Serial1.read();
         
         //Check to see if the USB stick is connected or not.
         if(USB_Byte==0x15){                               // If true - there is a USB stick connected
@@ -128,18 +133,18 @@ void set_USB_Mode (byte value){
   delay(20);
 }
 
-//resetALL=========================================================================================
-//This will perform a hardware reset of the CH376S module - which usually takes about 35 msecs =====
+////resetALL=========================================================================================
+////This will perform a hardware reset of the CH376S module - which usually takes about 35 msecs =====
 void resetALL(){
-    USB.write(0x57);
-    USB.write(0xAB);
-    USB.write(0x05);
+    Serial1.write(0x57);
+    Serial1.write(0xAB);
+    Serial1.write(0x05);
     Serial.println("The CH376S module has been reset !");
     delay(200);
 }
 
-//readFile=====================================================================================
-//This will send a series of commands to read data from a specific file (defined by fileName)
+////readFile=====================================================================================
+////This will send a series of commands to read data from a specific file (defined by fileName)
 void readFile(String fileName){
   resetALL();                     //Reset the module
   set_USB_Mode(0x06);             //Set to USB Mode
@@ -152,8 +157,8 @@ void readFile(String fileName){
   fileClose(0x00);                //Close the file
 }
 
-//writeFile========================================================================================
-//is used to create a new file and then write data to that file. "fileName" is a variable used to hold the name of the file (e.g TEST.TXT). "data" should not be greater than 255 bytes long. 
+////writeFile========================================================================================
+////is used to create a new file and then write data to that file. "fileName" is a variable used to hold the name of the file (e.g TEST.TXT). "data" should not be greater than 255 bytes long. 
 void writeFile(String fileName, String data){
   resetALL();                     //Reset the module
   set_USB_Mode(0x06);             //Set to USB Mode
@@ -182,27 +187,27 @@ void appendFile(String fileName, String data){
     fileClose(0x01);                //Close the file using 0x01 - which means to update the size of the file on close. 
 }
   
-//setFileName======================================================================================
-//This sets the name of the file to work with
+////setFileName======================================================================================
+////This sets the name of the file to work with
 void setFileName(String fileName){
   Serial.print("Setting filename to:");
   Serial.println(fileName);
-  USB.write(0x57);
-  USB.write(0xAB);
-  USB.write(0x2F);
-  USB.write(0x2F);         // Every filename must have this byte to indicate the start of the file name.
-  USB.print(fileName);     // "fileName" is a variable that holds the name of the file.  eg. TEST.TXT
-  USB.write((byte)0x00);   // you need to cast as a byte - otherwise it will not compile.  The null byte indicates the end of the file name.
+  Serial1.write(0x57);
+  Serial1.write(0xAB);
+  Serial1.write(0x2F);
+  Serial1.write(0x2F);         // Every filename must have this byte to indicate the start of the file name.
+  Serial1.print(fileName);     // "fileName" is a variable that holds the name of the file.  eg. TEST.TXT
+  Serial1.write((byte)0x00);   // you need to cast as a byte - otherwise it will not compile.  The null byte indicates the end of the file name.
   delay(20);
 }
 
-//diskConnectionStatus================================================================================
-//Check the disk connection status
+////diskConnectionStatus================================================================================
+////Check the disk connection status
 void diskConnectionStatus(){
   Serial.println("Checking USB disk connection status");
-  USB.write(0x57);
-  USB.write(0xAB);
-  USB.write(0x30);
+  Serial1.write(0x57);
+  Serial1.write(0xAB);
+  Serial1.write(0x30);
 
   if(waitForResponse("Connecting to USB disk")){       //wait for a response from the CH376S. If CH376S responds, it will be true. If it times out, it will be false.
     if(getResponseFromUSB()==0x14){               //CH376S will send 0x14 if this command was successful
@@ -213,13 +218,13 @@ void diskConnectionStatus(){
   }
 }
 
-//USBdiskMount========================================================================================
-//initialise the USB disk and check that it is ready - this process is required if you want to find the manufacturing information of the USB disk
+////USBdiskMount========================================================================================
+////initialise the USB disk and check that it is ready - this process is required if you want to find the manufacturing information of the USB disk
 void USBdiskMount(){
   Serial.println("Mounting USB disk");
-  USB.write(0x57);
-  USB.write(0xAB);
-  USB.write(0x31);
+  Serial1.write(0x57);
+  Serial1.write(0xAB);
+  Serial1.write(0x31);
 
   if(waitForResponse("mounting USB disk")){       //wait for a response from the CH376S. If CH376S responds, it will be true. If it times out, it will be false.
     if(getResponseFromUSB()==0x14){               //CH376S will send 0x14 if this command was successful
@@ -230,13 +235,13 @@ void USBdiskMount(){
   }
 }
 
-//fileOpen========================================================================================
-//opens the file for reading or writing
+////fileOpen========================================================================================
+////opens the file for reading or writing
 void fileOpen(){
   Serial.println("Opening file.");
-  USB.write(0x57);
-  USB.write(0xAB);
-  USB.write(0x32);
+  Serial1.write(0x57);
+  Serial1.write(0xAB);
+  Serial1.write(0x32);
   if(waitForResponse("file Open")){                 //wait for a response from the CH376S. If CH376S responds, it will be true. If it times out, it will be false.
     if(getResponseFromUSB()==0x14){                 //CH376S will send 0x14 if this command was successful  
        Serial.println(">File opened successfully.");
@@ -246,16 +251,16 @@ void fileOpen(){
   }
 }
 
-//setByteRead=====================================================================================
-//This function is required if you want to read data from the file. 
+////setByteRead=====================================================================================
+////This function is required if you want to read data from the file. 
 boolean setByteRead(byte numBytes){
   boolean bytesToRead=false;
   int timeCounter = 0;
-  USB.write(0x57);
-  USB.write(0xAB);
-  USB.write(0x3A);
-  USB.write((byte)numBytes);   //tells the CH376S how many bytes to read at a time
-  USB.write((byte)0x00);
+  Serial1.write(0x57);
+  Serial1.write(0xAB);
+  Serial1.write(0x3A);
+  Serial1.write((byte)numBytes);   //tells the CH376S how many bytes to read at a time
+  Serial1.write((byte)0x00);
   if(waitForResponse("setByteRead")){       //wait for a response from the CH376S. If CH376S responds, it will be true. If it times out, it will be false.
     if(getResponseFromUSB()==0x1D){         //read the CH376S message. If equal to 0x1D, data is present, so return true. Will return 0x14 if no data is present.
       bytesToRead=true;
@@ -264,28 +269,28 @@ boolean setByteRead(byte numBytes){
   return(bytesToRead);
 } 
 
-//getFileSize()===================================================================================
-//writes the file size to the serial Monitor.
+////getFileSize()===================================================================================
+////writes the file size to the serial Monitor.
 int getFileSize(){
   int fileSize=0;
   Serial.println("Getting File Size");
-  USB.write(0x57);
-  USB.write(0xAB);
-  USB.write(0x0C);
-  USB.write(0x68);
+  Serial1.write(0x57);
+  Serial1.write(0xAB);
+  Serial1.write(0x0C);
+  Serial1.write(0x68);
   delay(100);
   Serial.print("FileSize =");
-  if(USB.available()){
-    fileSize = fileSize + USB.read();
+  if(Serial1.available()){
+    fileSize = fileSize + Serial1.read();
   } 
-  if(USB.available()){
-    fileSize = fileSize + (USB.read()*255);
+  if(Serial1.available()){
+    fileSize = fileSize + (Serial1.read()*255);
   } 
-  if(USB.available()){
-    fileSize = fileSize + (USB.read()*255*255);
+  if(Serial1.available()){
+    fileSize = fileSize + (Serial1.read()*255*255);
   } 
-  if(USB.available()){
-    fileSize = fileSize + (USB.read()*255*255*255);
+  if(Serial1.available()){
+    fileSize = fileSize + (Serial1.read()*255*255*255);
   }     
   Serial.println(fileSize);
   delay(10);
@@ -293,21 +298,21 @@ int getFileSize(){
 }
 
 
-//fileRead========================================================================================
-//read the contents of the file
+////fileRead========================================================================================
+////read the contents of the file
 void fileRead(){
   Serial.println("Reading file:");
   byte firstByte = 0x00;                     //Variable to hold the firstByte from every transmission.  Can be used as a checkSum if required.
   byte numBytes = 0x40;                      //The maximum value is 0x40  =  64 bytes
  
   while(setByteRead(numBytes)){              //This tells the CH376S module how many bytes to read on the next reading step. In this example, we will read 0x10 bytes at a time. Returns true if there are bytes to read, false if there are no more bytes to read.
-    USB.write(0x57);
-    USB.write(0xAB);
-    USB.write(0x27);                          //Command to read ALL of the bytes (allocated by setByteRead(x))
+    Serial1.write(0x57);
+    Serial1.write(0xAB);
+    Serial1.write(0x27);                          //Command to read ALL of the bytes (allocated by setByteRead(x))
     if(waitForResponse("reading data")){      //Wait for the CH376S module to return data. TimeOut will return false. If data is being transmitted, it will return true.
-        firstByte=USB.read();                 //Read the first byte
-        while(USB.available()){
-          Serial.write(USB.read());           //Send the data from the USB disk to the Serial monitor
+        firstByte=Serial1.read();                 //Read the first byte
+        while(Serial1.available()){
+          Serial.write(Serial1.read());           //Send the data from the USB disk to the Serial monitor
           delay(1);                           //This delay is necessary for successful Serial transmission
         }
     }
@@ -319,8 +324,8 @@ void fileRead(){
   Serial.println("NO MORE DATA");
 }
 
-//fileWrite=======================================================================================
-//are the commands used to write to the file
+////fileWrite=======================================================================================
+////are the commands used to write to the file
 void fileWrite(String data){
   Serial.println("Writing to file:");
   byte dataLength = (byte) data.length();         // This variable holds the length of the data to be written (in bytes)
@@ -329,40 +334,40 @@ void fileWrite(String data){
   Serial.println(dataLength);
   delay(100);
   // This set of commands tells the CH376S module how many bytes to expect from the Arduino.  (defined by the "dataLength" variable)
-  USB.write(0x57);
-  USB.write(0xAB);
-  USB.write(0x3C);
-  USB.write((byte) dataLength);
-  USB.write((byte) 0x00);
+  Serial1.write(0x57);
+  Serial1.write(0xAB);
+  Serial1.write(0x3C);
+  Serial1.write((byte) dataLength);
+  Serial1.write((byte) 0x00);
   if(waitForResponse("setting data Length")){      // Wait for an acknowledgement from the CH376S module before trying to send data to it
     if(getResponseFromUSB()==0x1E){                // 0x1E indicates that the USB device is in write mode.
-      USB.write(0x57);
-      USB.write(0xAB);
-      USB.write(0x2D);
-      USB.print(data);                             // write the data to the file
+      Serial1.write(0x57);
+      Serial1.write(0xAB);
+      Serial1.write(0x2D);
+      Serial1.print(data);                             // write the data to the file
   
       if(waitForResponse("writing data to file")){   // wait for an acknowledgement from the CH376S module
       }
       Serial.print("Write code (normally FF and 14): ");
-      Serial.print(USB.read(),HEX);                // code is normally 0xFF
+      Serial.print(Serial1.read(),HEX);                // code is normally 0xFF
       Serial.print(",");
-      USB.write(0x57);
-      USB.write(0xAB);
-      USB.write(0x3D);                             // This is used to update the file size. Not sure if this is necessary for successful writing.
+      Serial1.write(0x57);
+      Serial1.write(0xAB);
+      Serial1.write(0x3D);                             // This is used to update the file size. Not sure if this is necessary for successful writing.
       if(waitForResponse("updating file size")){   // wait for an acknowledgement from the CH376S module
       }
-      Serial.println(USB.read(),HEX);              //code is normally 0x14
+      Serial.println(Serial1.read(),HEX);              //code is normally 0x14
     }
   }
 }
 
-//continueRead()==================================================================================
-//continue to read the file : I could not get this function to work as intended.
+////continueRead()==================================================================================
+////continue to read the file : I could not get this function to work as intended.
 boolean continueRead(){
   boolean readAgain = false;
-  USB.write(0x57);
-  USB.write(0xAB);
-  USB.write(0x3B);
+  Serial1.write(0x57);
+  Serial1.write(0xAB);
+  Serial1.write(0x3B);
   if(waitForResponse("continueRead")){       //wait for a response from the CH376S. If CH376S responds, it will be true. If it times out, it will be false.
      if(getResponseFromUSB()==0x14){         //CH376S will send 0x14 if this command was successful
        readAgain=true;
@@ -371,13 +376,13 @@ boolean continueRead(){
   return(readAgain);
 } 
 
-//fileCreate()========================================================================================
-//the command sequence to create a file
+////fileCreate()========================================================================================
+////the command sequence to create a file
 boolean fileCreate(){
   boolean createdFile = false;
-  USB.write(0x57);
-  USB.write(0xAB);
-  USB.write(0x34);
+  Serial1.write(0x57);
+  Serial1.write(0xAB);
+  Serial1.write(0x34);
   if(waitForResponse("creating file")){       //wait for a response from the CH376S. If file has been created successfully, it will return true.
      if(getResponseFromUSB()==0x14){          //CH376S will send 0x14 if this command was successful
        createdFile=true;
@@ -387,14 +392,14 @@ boolean fileCreate(){
 }
 
 
-//fileDelete()========================================================================================
-//the command sequence to delete a file
+////fileDelete()========================================================================================
+////the command sequence to delete a file
 void fileDelete(String fileName){
   setFileName(fileName);
   delay(20);
-  USB.write(0x57);
-  USB.write(0xAB);
-  USB.write(0x35);
+  Serial1.write(0x57);
+  Serial1.write(0xAB);
+  Serial1.write(0x35);
   if(waitForResponse("deleting file")){       //wait for a response from the CH376S. If file has been created successfully, it will return true.
      if(getResponseFromUSB()==0x14){          //CH376S will send 0x14 if this command was successful
        Serial.println("Successfully deleted file");
@@ -403,22 +408,22 @@ void fileDelete(String fileName){
 }
   
 
-//filePointer========================================================================================
-//is used to set the file pointer position. true for beginning of file, false for the end of the file.
+////filePointer========================================================================================
+////is used to set the file pointer position. true for beginning of file, false for the end of the file.
 void filePointer(boolean fileBeginning){
-  USB.write(0x57);
-  USB.write(0xAB);
-  USB.write(0x39);
+  Serial1.write(0x57);
+  Serial1.write(0xAB);
+  Serial1.write(0x39);
   if(fileBeginning){
-    USB.write((byte)0x00);             //beginning of file
-    USB.write((byte)0x00);
-    USB.write((byte)0x00);
-    USB.write((byte)0x00);
+    Serial1.write((byte)0x00);             //beginning of file
+    Serial1.write((byte)0x00);
+    Serial1.write((byte)0x00);
+    Serial1.write((byte)0x00);
   } else {
-    USB.write((byte)0xFF);             //end of file
-    USB.write((byte)0xFF);
-    USB.write((byte)0xFF);
-    USB.write((byte)0xFF);
+    Serial1.write((byte)0xFF);             //end of file
+    Serial1.write((byte)0xFF);
+    Serial1.write((byte)0xFF);
+    Serial1.write((byte)0xFF);
   }
   if(waitForResponse("setting file pointer")){       //wait for a response from the CH376S. 
      if(getResponseFromUSB()==0x14){                 //CH376S will send 0x14 if this command was successful
@@ -428,14 +433,14 @@ void filePointer(boolean fileBeginning){
 }
 
 
-//fileClose=======================================================================================
-//closes the file
+////fileClose=======================================================================================
+////closes the file
 void fileClose(byte closeCmd){
   Serial.println("Closing file:");
-  USB.write(0x57);
-  USB.write(0xAB);
-  USB.write(0x36);
-  USB.write((byte)closeCmd);                                // closeCmd = 0x00 = close without updating file Size, 0x01 = close and update file Size
+  Serial1.write(0x57);
+  Serial1.write(0xAB);
+  Serial1.write(0x36);
+  Serial1.write((byte)closeCmd);                                // closeCmd = 0x00 = close without updating file Size, 0x01 = close and update file Size
 
   if(waitForResponse("closing file")){                      // wait for a response from the CH376S. 
      byte resp = getResponseFromUSB();
@@ -453,7 +458,7 @@ void fileClose(byte closeCmd){
 boolean waitForResponse(String errorMsg){
   boolean bytesAvailable = true;
   int counter=0;
-  while(!USB.available()){     //wait for CH376S to verify command
+  while(!Serial1.available()){     //wait for CH376S to verify command
     delay(1);
     counter++;
     if(counter>timeOut){
@@ -471,8 +476,13 @@ boolean waitForResponse(String errorMsg){
 //is used to get any error codes or messages from the CH376S module (in response to certain commands)
 byte getResponseFromUSB(){
   byte response = byte(0x00);
-  if (USB.available()){
-    response = USB.read();
+  if (Serial1.available()){
+    response = Serial1.read();
+    
+    Serial.println("here");
+    Serial.println(response);
+    Serial.println("here");
+
   }
   return(response);
 }

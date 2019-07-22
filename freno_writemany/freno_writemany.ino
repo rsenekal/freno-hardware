@@ -17,6 +17,10 @@ String wrData = "temp";
 const int MPU_addr=0x68;  // I2C address of the MPU-6050
 float AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
 
+// Set the pin numbers for the closeFile button:
+const int closeFileButtonPin = 2;     // the number of the closeFileButton pin (PWM-2)
+int closeFileButtonState = 0;         // variable for reading the closeFileButton state.
+
 //USB VALUES
 byte computerByte;           //used to store data coming from the computer
 byte USB_Byte;               //used to store data coming from the USB stick
@@ -29,6 +33,7 @@ void setup(){
   Wire.write(0x6B);  // PWR_MGMT_1 register
   Wire.write(0);     // set to zero (wakes up the MPU-6050)
   Wire.endTransmission(true);
+  pinMode(closeFileButtonPin, INPUT); // initialize the closeFileButton pin as an input:
   Serial.begin(9600);
   Serial1.begin(9600);
 
@@ -41,6 +46,13 @@ void setup(){
 }
 
 void loop(){
+  closeFileButtonState = digitalRead(closeFileButtonPin); // read the state of the closeFileButton value:
+  
+  // Check if the closeFileButton has been pressed. Pressed == HIGH.
+  if (closeFileButtonState == HIGH) {
+    closeFile();
+  }
+
   Wire.beginTransmission(MPU_addr);
   Wire.write(0x3B);  // starting with register 0x3B (ACCEL_XOUT_H)
   Wire.endTransmission(false);
@@ -218,6 +230,13 @@ void resetALL(){
     Serial1.write(0x05);
     Serial.println("The CH376S module has been reset !");
     delay(200);
+}
+
+////closeFile========================================================================================
+////is used to close the file being written to with the click of a button.
+void closeFile(){
+  fileClose(0x01);
+  while(1);
 }
 
 ////writeFile========================================================================================

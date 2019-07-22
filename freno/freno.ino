@@ -11,7 +11,9 @@ PololuLedStrip<12> ledStrip;
 rgb_color colors[LED_COUNT];
 rgb_color color;
 bool led_on = false;
+bool ran_twice_flag = false;
 
+String wrData[255]; 
 const int MPU_addr=0x68;  // I2C address of the MPU-6050
 float AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
 
@@ -19,7 +21,6 @@ float AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
 byte computerByte;           //used to store data coming from the computer
 byte USB_Byte;               //used to store data coming from the USB stick
 int timeOut = 2000;          //TimeOut is 2 seconds. This is the amount of time you wish to wait for a response from the CH376S module.
-String wrData[101];     //We will write this data to a newly created file.
 unsigned long time;
 int seshs = 0;
 int index = 0;
@@ -37,9 +38,8 @@ void setup(){
   color.green = 0;
   color.blue = 0;
 
+  //We will write this data to a newly created file.
   writeFile("TEST.TXT", "Time, AccelX, AccelY, AccelZ, GyroX, GyroY, GyroZ \r\n");
-   // resetALL();                     //Reset the module
-
 }
 
 void loop(){
@@ -66,7 +66,7 @@ void loop(){
   GyZ = GyZ / 131;
 
   // ****** Should be removed from final code ******
-  Serial.print("AcX = "); Serial.print(AcX);
+  Serial.print("AcX = "); Serial.println(AcX);
 //  Serial.print(" | AcY = "); Serial.print(AcY);
 //  Serial.print(" | AcZ = "); Serial.print(AcZ);
 //  Serial.print(" | GyX = "); Serial.print(GyX);
@@ -74,7 +74,7 @@ void loop(){
 //  Serial.print(" | GyZ = "); Serial.println(GyZ);
   // ***********************************************
   
-  if(AcX >= 0.3 && AcX < 0.5){
+  if(AcX <= -0.3 && AcX > -0.5){
 
     //update the colors buffer.
     for(uint16_t i = 0; i < 10; i++) // or use LED_COUNT/4
@@ -88,11 +88,11 @@ void loop(){
 
     //write to USB
     time = millis();  
-    wrData[index] = String(time) + ", " + AcX + ", " + AcY + ", " + AcZ + ", " + GyX + ", " + GyY + ", " + GyZ + "\r\n";
+    wrData[index] = String(time) + ", " + String(AcX) + "\n"; // + ", " + AcY + ", " + AcZ + ", " + GyX + ", " + GyY + ", " + GyZ + 
     index++;
     //appendFile(wrData); //"TEST.TXT", 
      
-  }else if(AcX >= 0.5 && AcX < 0.7){
+  }else if(AcX <= -0.5 && AcX > -0.7){
 
     //update the colors buffer.
     for(uint16_t i = 0; i < 20; i++) // or use LED_COUNT/2
@@ -100,17 +100,17 @@ void loop(){
       colors[i] = color;
     }
     
-    //turn on a quarter of the LEDs
+    //turn on half of the LEDs
     ledStrip.write(colors, 20);
     led_on = true;
 
     //write to USB
     time = millis();  
-    wrData[index] = String(time) + ", " + AcX + ", " + AcY + ", " + AcZ + ", " + GyX + ", " + GyY + ", " + GyZ + "\r\n";
+    wrData[index] = String(time) + ", " + String(AcX) + "\n"; // + ", " + AcY + ", " + AcZ + ", " + GyX + ", " + GyY + ", " + GyZ + 
     index++;
     //appendFile(wrData); //"TEST.TXT", 
 
-  }else if(AcX >= 0.7 && AcX < 0.9){
+  }else if(AcX <= -0.7 && AcX > -0.9){
 
     //update the colors buffer.
     for(uint16_t i = 0; i < 30; i++) // or use (LED_COUNT*3)/4
@@ -118,17 +118,17 @@ void loop(){
       colors[i] = color;
     }
     
-    //turn on a quarter of the LEDs
+    //turn on 3/4s of the LEDs
     ledStrip.write(colors, 30);
     led_on = true;
 
     //write to USB
     time = millis();  
-    wrData[index] = String(time) + ", " + AcX + ", " + AcY + ", " + AcZ + ", " + GyX + ", " + GyY + ", " + GyZ + "\r\n";
+    wrData[index] = String(time) + ", " + String(AcX) + "\n"; // + ", " + AcY + ", " + AcZ + ", " + GyX + ", " + GyY + ", " + GyZ + 
     index++;
     //appendFile(wrData); //"TEST.TXT", 
     
-  }else if(AcX >= 0.9){ 
+  }else if(AcX <= -0.9){ 
 
     //update the colors buffer.
     for(uint16_t i = 0; i < LED_COUNT; i++)
@@ -136,13 +136,13 @@ void loop(){
       colors[i] = color;
     }
     
-    //turn on a quarter of the LEDs
+    //turn on all of the LEDs
     ledStrip.write(colors, LED_COUNT);
     led_on = true;
     
     //write to USB
-    time = millis();  
-    wrData[index] = String(time) + ", " + AcX + ", " + AcY + ", " + AcZ + ", " + GyX + ", " + GyY + ", " + GyZ + "\r\n";
+    time = millis();
+    wrData[index] = String(time) + ", " + String(AcX) + "\n"; // + ", " + AcY + ", " + AcZ + ", " + GyX + ", " + GyY + ", " + GyZ + 
     index++;
     //appendFile(wrData); //"TEST.TXT", 
     
@@ -168,14 +168,25 @@ void loop(){
       color.blue = 0;
     }
   }
-
-  if(seshs > 100){
-    appendFile(wrData);
-    fileClose(0x01);
-    while(1);
-  }
   
   seshs++;
+  if(seshs > 15){
+    //if seshs exceeds 15 then write the data
+    appendFile(wrData);
+    for(int i = 0; i < index;  i++){
+      wrData[i] = "";
+    }
+    index = 0;
+    seshs = 0;
+    
+    if(ran_twice_flag){
+      fileClose(0x01); //remove this to use continuous running
+      while(1); //remove this to use continuous running
+    }
+    ran_twice_flag = true;
+  }
+  
+  
   delay(100);
   
 }
@@ -253,6 +264,7 @@ void appendFile(String data[]){ //String fileName,
 //    fileOpen();                     //Open the file
     //filePointer(false);             //filePointer(false) is to set the pointer at the end of the file.  filePointer(true) will set the pointer to the beginning.
     for(int i = 0; i <= index; i++){
+      delay(100);
       filePointer(false);             //filePointer(false) is to set the pointer at the end of the file.  filePointer(true) will set the pointer to the beginning.
       fileWrite(data[i]);                //Write data to the end of the file
     }

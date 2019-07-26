@@ -6,26 +6,28 @@
 #include <Wire.h>
 #include <PololuLedStrip.h>
 
-PololuLedStrip<12> ledStrip;
+//LED VALUES
 #define LED_COUNT 40
+PololuLedStrip<12> ledStrip;
 rgb_color colors[LED_COUNT];
 rgb_color color;
 bool led_on = false;
 int seshs = 0;
 
-String wrData = "temp"; 
+//MPU VALUES
 const int MPU_addr=0x68;  // I2C address of the MPU-6050
 float AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
-
-// Set the pin numbers for the closeFile button:
-const int closeFileButtonPin = 2;     // the number of the closeFileButton pin (PWM-2)
-int closeFileButtonState = 0;         // variable for reading the closeFileButton state.
 
 //USB VALUES
 byte computerByte;           //used to store data coming from the computer
 byte USB_Byte;               //used to store data coming from the USB stick
-int timeOut = 2000;          //TimeOut is 2 seconds. This is the amount of time you wish to wait for a response from the CH376S module.
+int timeOut = 3000;          //TimeOut is 2 seconds. This is the amount of time you wish to wait for a response from the CH376S module.
 unsigned long time;
+String wrData = "temp"; 
+
+//BUTTON VALUES
+const int closeFileButtonPin = 2;     // the number of the closeFileButton pin (PWM-2)
+int closeFileButtonState = 0;         // variable for reading the closeFileButton state.
 
 void setup(){
   Wire.begin();
@@ -37,12 +39,13 @@ void setup(){
   Serial.begin(9600);
   Serial1.begin(9600);
 
+  //begin with red
   color.red = 255;
   color.green = 0;
   color.blue = 0;
 
-  //We will write this data to a newly created file.
-  writeFile("TEST.TXT", "Time, AccelX, AccelY, AccelZ, GyroX, GyroY, GyroZ \r\n");
+  //we will write this data to a newly created file.
+  writeFile("FRENO.TXT", "Time, AccelX \r\n");
 }
 
 void loop(){
@@ -61,19 +64,19 @@ void loop(){
   AcX = Wire.read()<<8|Wire.read();  // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)
   AcX = (AcX / 16384);   
   AcY = Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
-  AcY = (AcY / 16384);
+//  AcY = (AcY / 16384);
   AcZ = Wire.read()<<8|Wire.read();  // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
-  AcZ = (AcZ / 16384);
+//  AcZ = (AcZ / 16384);
 
   // look into how to remove tempurature reading to save power and processor time
   Tmp = Wire.read()<<8|Wire.read();  // 0x41 (TEMP_OUT_H) & 0x42 (TEMP_OUT_L)
   
   GyX = Wire.read()<<8|Wire.read();  // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
-  GyX = GyX / 131;
+//  GyX = GyX / 131;
   GyY=Wire.read()<<8|Wire.read();  // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
-  GyY = GyY / 131;
+//  GyY = GyY / 131;
   GyZ=Wire.read()<<8|Wire.read();  // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
-  GyZ = GyZ / 131;
+//  GyZ = GyZ / 131;
 
   // ****** Should be removed from final code ******
   Serial.print("AcX = "); Serial.println(AcX);
@@ -84,7 +87,7 @@ void loop(){
 //  Serial.print(" | GyZ = "); Serial.println(GyZ);
   // ***********************************************
   
-  if(AcX <= -0.3 && AcX > -0.5){
+  if(AcX <= -0.05 && AcX > -0.1){
 
     //update the colors buffer.
     for(uint16_t i = 0; i < 10; i++) // or use LED_COUNT/4
@@ -98,10 +101,10 @@ void loop(){
 
     //write to USB
     time = millis();  
-    wrData = String(time) + ", " + String(AcX) + "\n"; // + ", " + AcY + ", " + AcZ + ", " + GyX + ", " + GyY + ", " + GyZ + 
-    appendFile(wrData); //"TEST.TXT", 
+    wrData = String(time) + ", " + String(AcX) + "\n";
+    appendFile(wrData);
      
-  }else if(AcX <= -0.5 && AcX > -0.7){
+  }else if(AcX <= -0.1 && AcX > -0.15){
 
     //update the colors buffer.
     for(uint16_t i = 0; i < 20; i++) // or use LED_COUNT/2
@@ -115,10 +118,10 @@ void loop(){
 
     //write to USB
     time = millis();  
-    wrData = String(time) + ", " + String(AcX) + "\n"; // + ", " + AcY + ", " + AcZ + ", " + GyX + ", " + GyY + ", " + GyZ + 
-    appendFile(wrData); //"TEST.TXT", 
+    wrData = String(time) + ", " + String(AcX) + "\n";
+    appendFile(wrData); 
 
-  }else if(AcX <= -0.7 && AcX > -0.9){
+  }else if(AcX <= -0.15 && AcX > -0.2){
 
     //update the colors buffer.
     for(uint16_t i = 0; i < 30; i++) // or use (LED_COUNT*3)/4
@@ -132,10 +135,10 @@ void loop(){
 
     //write to USB
     time = millis();  
-    wrData = String(time) + ", " + String(AcX) + "\n"; // + ", " + AcY + ", " + AcZ + ", " + GyX + ", " + GyY + ", " + GyZ + 
-    appendFile(wrData); //"TEST.TXT", 
+    wrData = String(time) + ", " + String(AcX) + "\n";
+    appendFile(wrData);
     
-  }else if(AcX <= -0.9){ 
+  }else if(AcX <= -0.2){ 
 
     //update the colors buffer.
     for(uint16_t i = 0; i < LED_COUNT; i++)
@@ -149,8 +152,8 @@ void loop(){
     
     //write to USB
     time = millis();
-    wrData = String(time) + ", " + String(AcX) + "\n"; // + ", " + AcY + ", " + AcZ + ", " + GyX + ", " + GyY + ", " + GyZ + 
-    appendFile(wrData); //"TEST.TXT", 
+    wrData = String(time) + ", " + String(AcX) + "\n";
+    appendFile(wrData);  
     
   }else{
 
@@ -174,12 +177,11 @@ void loop(){
       color.blue = 0;
     }
   }
-  
-  seshs++;
-  if(seshs > 100){   
-      fileClose(0x01); //remove this to use continuous running
-      while(1); //remove this to use continuous running
-  }
+//  seshs++;
+//  if(seshs > 100){   
+////      fileClose(0x01); //remove this to use continuous running
+////      while(1); //remove this to use continuous running
+//  }
   
   
   delay(100);
@@ -268,7 +270,7 @@ void appendFile(String data){ //String fileName,
 
     fileWrite(data);                //Write data to the end of the file
   
-    //fileClose(0x01);                //Close the file using 0x01 - which means to update the size of the file on close. 
+//    fileClose(0x01);                //Close the file using 0x01 - which means to update the size of the file on close. 
 }
 
 ////setFileName======================================================================================
@@ -389,6 +391,7 @@ void filePointer(boolean fileBeginning){
   Serial1.write(0x57);
   Serial1.write(0xAB);
   Serial1.write(0x39);
+  Serial.println("here1");
   if(fileBeginning){
     Serial1.write((byte)0x00);             //beginning of file
     Serial1.write((byte)0x00);

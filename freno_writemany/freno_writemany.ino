@@ -12,7 +12,6 @@ PololuLedStrip<12> ledStrip;
 rgb_color colors[LED_COUNT];
 rgb_color color;
 bool led_on = false;
-int seshs = 0;
 
 //MPU VALUES
 const int MPU_addr=0x68;  // I2C address of the MPU-6050
@@ -176,16 +175,9 @@ void loop(){
       color.green = 0;
       color.blue = 0;
     }
-  }
-//  seshs++;
-//  if(seshs > 100){   
-////      fileClose(0x01); //remove this to use continuous running
-////      while(1); //remove this to use continuous running
-//  }
+  }  
   
-  
-  delay(100);
-  
+  delay(100); 
 }
 
 //set_USB_Mode=====================================================================================

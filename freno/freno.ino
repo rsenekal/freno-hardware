@@ -6,24 +6,27 @@
 #include <Wire.h>
 #include <PololuLedStrip.h>
 
+//LED VALUES
+#define LED_COUNT 36
 PololuLedStrip<12> ledStrip;
-#define LED_COUNT 40
 rgb_color colors[LED_COUNT];
 rgb_color color;
 bool led_on = false;
-bool ran_twice_flag = false;
 
-String wrData[255]; 
+//MPU VALUES
 const int MPU_addr=0x68;  // I2C address of the MPU-6050
 float AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
 
 //USB VALUES
 byte computerByte;           //used to store data coming from the computer
 byte USB_Byte;               //used to store data coming from the USB stick
-int timeOut = 2000;          //TimeOut is 2 seconds. This is the amount of time you wish to wait for a response from the CH376S module.
+int timeOut = 3000;          //TimeOut is 2 seconds. This is the amount of time you wish to wait for a response from the CH376S module.
 unsigned long time;
-int seshs = 0;
-int index = 0;
+String wrData = "temp"; 
+
+//BUTTON VALUES
+const int closeFileButtonPin = 2;     // the number of the closeFileButton pin (PWM-2)
+int closeFileButtonState = 0;         // variable for reading the closeFileButton state.
 
 void setup(){
   Wire.begin();
@@ -31,18 +34,28 @@ void setup(){
   Wire.write(0x6B);  // PWR_MGMT_1 register
   Wire.write(0);     // set to zero (wakes up the MPU-6050)
   Wire.endTransmission(true);
+  pinMode(closeFileButtonPin, INPUT); // initialize the closeFileButton pin as an input:
   Serial.begin(9600);
   Serial1.begin(9600);
 
+  //begin with red
   color.red = 255;
   color.green = 0;
   color.blue = 0;
 
-  //We will write this data to a newly created file.
-  writeFile("TEST.TXT", "Time, AccelX, AccelY, AccelZ, GyroX, GyroY, GyroZ \r\n");
+  //we will write this data to a newly created file.
+  writeFile("FRENO.TXT", "Time, AccelX \r\n");
 }
 
 void loop(){
+  closeFileButtonState = digitalRead(closeFileButtonPin); // read the state of the closeFileButton value:
+  
+  // Check if the closeFileButton has been pressed. Pressed == HIGH.
+  if (closeFileButtonState == HIGH) {
+    fileClose(0x01);
+    while(1);
+  }
+
   Wire.beginTransmission(MPU_addr);
   Wire.write(0x3B);  // starting with register 0x3B (ACCEL_XOUT_H)
   Wire.endTransmission(false);
@@ -51,19 +64,19 @@ void loop(){
   AcX = Wire.read()<<8|Wire.read();  // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)
   AcX = (AcX / 16384);   
   AcY = Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
-  AcY = (AcY / 16384);
+//  AcY = (AcY / 16384);
   AcZ = Wire.read()<<8|Wire.read();  // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
-  AcZ = (AcZ / 16384);
+//  AcZ = (AcZ / 16384);
 
   // look into how to remove tempurature reading to save power and processor time
   Tmp = Wire.read()<<8|Wire.read();  // 0x41 (TEMP_OUT_H) & 0x42 (TEMP_OUT_L)
   
   GyX = Wire.read()<<8|Wire.read();  // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
-  GyX = GyX / 131;
+//  GyX = GyX / 131;
   GyY=Wire.read()<<8|Wire.read();  // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
-  GyY = GyY / 131;
+//  GyY = GyY / 131;
   GyZ=Wire.read()<<8|Wire.read();  // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
-  GyZ = GyZ / 131;
+//  GyZ = GyZ / 131;
 
   // ****** Should be removed from final code ******
   Serial.print("AcX = "); Serial.println(AcX);
@@ -74,61 +87,41 @@ void loop(){
 //  Serial.print(" | GyZ = "); Serial.println(GyZ);
   // ***********************************************
   
-  if(AcX <= -0.3 && AcX > -0.5){
+  if(AcX <= -0.1 && AcX > -0.2){
 
     //update the colors buffer.
-    for(uint16_t i = 0; i < 10; i++) // or use LED_COUNT/4
+    for(uint16_t i = 0; i < 12; i++)
     {
       colors[i] = color;
     }
     
-    //turn on a quarter of the LEDs
-    ledStrip.write(colors, 10);
+    //turn on a third of the LEDs
+    ledStrip.write(colors, 12);
     led_on = true;
 
     //write to USB
     time = millis();  
-    wrData[index] = String(time) + ", " + String(AcX) + "\n"; // + ", " + AcY + ", " + AcZ + ", " + GyX + ", " + GyY + ", " + GyZ + 
-    index++;
-    //appendFile(wrData); //"TEST.TXT", 
+    wrData = String(time) + ", " + String(AcX) + "\n";
+    appendFile(wrData);
      
-  }else if(AcX <= -0.5 && AcX > -0.7){
+  }else if(AcX <= -0.2 && AcX > -0.3){
 
     //update the colors buffer.
-    for(uint16_t i = 0; i < 20; i++) // or use LED_COUNT/2
+    for(uint16_t i = 0; i < 24; i++)
     {
       colors[i] = color;
     }
     
-    //turn on half of the LEDs
-    ledStrip.write(colors, 20);
+    //turn on two thirds of the LEDs
+    ledStrip.write(colors, 24);
     led_on = true;
 
     //write to USB
     time = millis();  
-    wrData[index] = String(time) + ", " + String(AcX) + "\n"; // + ", " + AcY + ", " + AcZ + ", " + GyX + ", " + GyY + ", " + GyZ + 
-    index++;
-    //appendFile(wrData); //"TEST.TXT", 
+    wrData = String(time) + ", " + String(AcX) + "\n";
+    appendFile(wrData); 
 
-  }else if(AcX <= -0.7 && AcX > -0.9){
-
-    //update the colors buffer.
-    for(uint16_t i = 0; i < 30; i++) // or use (LED_COUNT*3)/4
-    {
-      colors[i] = color;
-    }
-    
-    //turn on 3/4s of the LEDs
-    ledStrip.write(colors, 30);
-    led_on = true;
-
-    //write to USB
-    time = millis();  
-    wrData[index] = String(time) + ", " + String(AcX) + "\n"; // + ", " + AcY + ", " + AcZ + ", " + GyX + ", " + GyY + ", " + GyZ + 
-    index++;
-    //appendFile(wrData); //"TEST.TXT", 
-    
-  }else if(AcX <= -0.9){ 
+  }else if(AcX <= -0.3){ 
 
     //update the colors buffer.
     for(uint16_t i = 0; i < LED_COUNT; i++)
@@ -142,9 +135,8 @@ void loop(){
     
     //write to USB
     time = millis();
-    wrData[index] = String(time) + ", " + String(AcX) + "\n"; // + ", " + AcY + ", " + AcZ + ", " + GyX + ", " + GyY + ", " + GyZ + 
-    index++;
-    //appendFile(wrData); //"TEST.TXT", 
+    wrData = String(time) + ", " + String(AcX) + "\n";
+    appendFile(wrData);  
     
   }else{
 
@@ -167,29 +159,12 @@ void loop(){
       color.green = 0;
       color.blue = 0;
     }
-  }
+  }  
   
-  seshs++;
-  if(seshs > 15){
-    //if seshs exceeds 15 then write the data
-    appendFile(wrData);
-    for(int i = 0; i < index;  i++){
-      wrData[i] = "";
-    }
-    index = 0;
-    seshs = 0;
-    
-    if(ran_twice_flag){
-      fileClose(0x01); //remove this to use continuous running
-      while(1); //remove this to use continuous running
-    }
-    ran_twice_flag = true;
-  }
-  
-  
-  delay(100);
-  
+  delay(100); 
 }
+
+//CODE BELOW BORROWED FROM https://arduinobasics.blogspot.com/2015/05/ch376s-usb-readwrite-module.html
 
 //set_USB_Mode=====================================================================================
 //Make sure that the USB is inserted when using 0x06 as the value in this specific code sequence
@@ -255,22 +230,18 @@ void writeFile(String fileName, String data){
 
 //appendFile()====================================================================================
 //is used to write data to the end of the file, without erasing the contents of the file.
-void appendFile(String data[]){ //String fileName, 
+void appendFile(String data){ //String fileName, 
 //    resetALL();                     //Reset the module
 //    set_USB_Mode(0x06);             //Set to USB Mode
 //    diskConnectionStatus();         //Check that communication with the USB device is possible
 //    USBdiskMount();                 //Prepare the USB for reading/writing - you need to mount the USB disk for proper read/write operations.
 //    setFileName(fileName);          //Set File name
 //    fileOpen();                     //Open the file
-    //filePointer(false);             //filePointer(false) is to set the pointer at the end of the file.  filePointer(true) will set the pointer to the beginning.
-    for(int i = 0; i <= index; i++){
-      delay(100);
-      filePointer(false);             //filePointer(false) is to set the pointer at the end of the file.  filePointer(true) will set the pointer to the beginning.
-      fileWrite(data[i]);                //Write data to the end of the file
-    }
-    //fileWrite(data);                //Write data to the end of the file
+    filePointer(false);             //filePointer(false) is to set the pointer at the end of the file.  filePointer(true) will set the pointer to the beginning.
+
+    fileWrite(data);                //Write data to the end of the file
   
-    //fileClose(0x01);                //Close the file using 0x01 - which means to update the size of the file on close. 
+//    fileClose(0x01);                //Close the file using 0x01 - which means to update the size of the file on close. 
 }
 
 ////setFileName======================================================================================
@@ -391,6 +362,7 @@ void filePointer(boolean fileBeginning){
   Serial1.write(0x57);
   Serial1.write(0xAB);
   Serial1.write(0x39);
+  Serial.println("here1");
   if(fileBeginning){
     Serial1.write((byte)0x00);             //beginning of file
     Serial1.write((byte)0x00);
